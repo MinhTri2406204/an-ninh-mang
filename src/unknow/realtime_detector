@@ -18,6 +18,7 @@ session_queue=Queue()
 
 def capture(packet_queue):
     print("[INFO] NFStreamer bat dau lang nghe tren ens33...")
+#    streamer = NFStreamer(source="ens33", promiscuous_mode=True)
     for flow_dict in packet_stream("ens33"):
           src_ip = flow_dict.get("src_ip", "")
           dst_ip = flow_dict.get("dst_ip", "")
@@ -74,10 +75,14 @@ def ai_worker():
         send_alert(label, conf, x)
 
 Thread(target=capture, args=(packet_queue,), daemon=True).start()
+
 for _ in range(4):
     Thread(target=flow_worker, daemon=True).start()
+
 for _ in range(2):
     Thread(target=session_worker, daemon=True).start()
+
 Thread(target=ai_worker, daemon=True).start()
 while True:
     time.sleep(1)
+

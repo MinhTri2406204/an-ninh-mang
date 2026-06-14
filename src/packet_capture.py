@@ -1,8 +1,7 @@
 from nfstream import NFStreamer
 
 def packet_stream(interface):
-    streamer = NFStreamer(source=interface, promiscuous_mode=True)
-
+    streamer = NFStreamer(source="ens33", promiscuous_mode=True, idle_timeout=1, active_timeout=1)
     features = [
         "id", "expiration_id", "src_ip", "src_mac", "src_oui", "src_port",
         "dst_ip", "dst_mac", "dst_oui", "dst_port", "protocol", "ip_version",
@@ -14,7 +13,6 @@ def packet_stream(interface):
         "dst2src_duration_ms", "dst2src_packets", "dst2src_bytes",
         "application_name", "application_category_name"
     ]
-
     for flow in streamer:
-        flow_dict = {feat: getattr(flow, feat, None) for feat in features}
+        flow_dict = {feat: getattr(flow, feat, None) for feat in features} 
         yield flow_dict

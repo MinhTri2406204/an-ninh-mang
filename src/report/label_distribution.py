@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df=pd.read_csv("clean.csv")
+df=pd.read_csv("/home/ids/IDS_Project/data/clean.csv")
 
 counts=df["Label"].value_counts()
 

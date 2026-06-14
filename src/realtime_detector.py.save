@@ -1,0 +1,90 @@
+from threading import Thread
+from queue import Queue
+import time
+import csv
+import pandas as pd
+from collections import defaultdict
+from packet_capture import packet_stream
+from flow_builder import build_flow
+from session_analyzer import analyze
+from ensemble import ensemble_predict
+from alert_engine import send_alert
+from metrics import system_usage
+from profiler import Profile
+from performance import throughput
+
+packet_queue = Queue()
+flow_queue = Queue()
+session_queue = Queue()
+ip_buffers = defaultdict(list)
+
+def capture_worker(p_queue):
+    print("[INFO] Luong Ingestion bat dau capture luu luong tren interface ens33...")
+    INFRASTRUCTURE_IPS = {"192.168.88.1", "192.168.88.2", "192.168.88.254"}
+    SYSTEM_SERVICE_PREFIXES = ("91.189.", "185.125.", "45.252.")
+    for flow_dict in packet_stream("ens33"):
+        dst_ip = flow_dict.get("dst_ip", "")
+        src_ip = flow_dict.get("src_ip", "")
+        if dst_ip.startswith(("239.", "224.", "ff", "FF")) or dst_ip == "255.255.255.255":
+            continue
+        if (src_ip in INFRASTRUCTURE_IPS) or (dst_ip in INFRASTRUCTURE_IPS):
+            continue
+        if src_ip.startswith(SYSTEM_SERVICE_PREFIXES) or dst_ip.startswith(SYSTEM_SERVICE_PREFIXES):
+            continue
+        p_queue.put(flow_dict)
+
+def flow_worker_pool():
+    while True:
+        raw_flow = packet_queue.get()
+        p = Profile("flow_building")
+        flow = build_flow(raw_flow)
+        flow_queue.put(flow)
+        p.stop()
+        packet_queue.task_done()
+
+def session_worker_pool():
+    while True:
+        flow = flow_queue.get()
+        p = Profile("session_analysis")
+        flow_enriched = analyze(flow)
+        session_queue.put(flow_enriched)
+        p.stop()
+        flow_queue.task_done()
+
+def ensemble_inference_worker():
+    while True:
+        flow_enriched = session_queue.get()
+        p = Profile("inference")
+        src_ip = flow_enriched.get("src_ip", "unknown")
+        lstm_row = {feat: flow_enriched.get(feat, 0) for feat in LSTM_FEATURES}
+        ip_buffers[src_ip].append(lstm_row)
+        if len(ip_buffers[src_ip]) > 15:
+            ip_buffers[src_ip].pop(0)
+        history_df = pd.DataFrame(ip_buffers[src_ip])
+        label, confidence = ensemble_predict(flow_enriched, history_df)
+        latency = p.stop()
+        th = throughput()
+        if th is not None:
+            print(f"[METRIC COMPONENT] Throughput He thong: {th:.2f} flows/s")
+        usage = system_usage()
+        with open("/home/ids/IDS_Project/logs/resource.csv", "a") as f:
+            writer = csv.writer(f)
+            writer.writerow([time.time(), usage["cpu"], usage["ram"]])
+        print(f"[DETECTION] E2E Inference Latency: {latency:.2f} ms | Label: {label} ({confidence*100:.1f}%)")
+        if label == "PortScan" and confidence >= 0.85:
+            send_alert(label, confidence, flow_enriched)
+        session_queue.task_done()
+
+# =====================================================================
+# KÍCH HOẠT HỆ THỐNG PHÂN PHỐI WORKER POOL SONG SONG
+# =====================================================================
+if __name__ == "__main__":
+    Thread(target=capture_worker, args=(packet_queue,), daemon=True).start()
+    for _ in range(2):
+        Thread(target=flow_worker_pool, daemon=True).start()
+    for _ in range(2):
+        Thread(target=session_worker_pool, daemon=True).start()
+    Thread(target=ensemble_inference_worker, daemon=True).start()
+    print("[SUCCESS] Khung MachineLearning.CVE phat trien da luong phan cap dang van hanh...")
+    while True:
+        time.sleep(1)
