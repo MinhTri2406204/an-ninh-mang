@@ -1,6 +1,3 @@
-[N22DCCN187_TRANNGUYENMINHTRI.docx](https://github.com/user-attachments/files/29075018/N22DCCN187_TRANNGUYENMINHTRI.docx)
-[Hệ thống Phát hiện Đe dọa Đa lớp bằng AI.pdf.pdf](https://github.com/user-attachments/files/29075039/H.th.ng.Phat.hi.n.De.d.a.Da.l.p.b.ng.AI.pdf.pdf)
-
 <img width="756" height="284" alt="image" src="https://github.com/user-attachments/assets/3d05852a-a689-4b48-8c5e-fafefc80bd24" />
 
 <img width="618" height="285" alt="image" src="https://github.com/user-attachments/assets/af045365-b3bd-42c9-8ec4-e3db63fe867f" />
